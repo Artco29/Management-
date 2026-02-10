@@ -3,339 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP RT 04 - Integrated Version</title>
+    <title>ERP RT 04 Digital - Final Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
-        .nav-active { background: #2563eb; color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
-        .section { display: none; }
-        .section.active { display: block; }
-        .status-lunas { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-        .status-belum { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .active-link { border-left: 4px solid #fbbf24; background: #1e3a8a; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50">
 
-<div id="loader" class="fixed inset-0 z-[100] bg-white/80 flex items-center justify-center hidden">
-    <div class="flex flex-col items-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600 mb-2"></div>
-        <p class="text-blue-600 font-bold">Sinkronisasi Cloud...</p>
+    <div class="flex min-h-screen">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 bg-blue-900 text-white w-64 transition-transform -translate-x-full md:translate-x-0 md:relative z-50">
+            <div class="p-6">
+                <h1 class="text-xl font-bold border-b border-blue-700 pb-4 text-yellow-400">ERP RT 04</h1>
+                <nav class="mt-6 space-y-1">
+                    <a href="#" onclick="showSection('dash')" class="block py-3 px-4 rounded hover:bg-blue-800 transition">Dashboard</a>
+                    <a href="#" onclick="showSection('warga')" class="block py-3 px-4 rounded hover:bg-blue-800 transition">Data Warga</a>
+                    <a href="#" onclick="showSection('status-ipl')" class="block py-3 px-4 rounded hover:bg-blue-800 transition">Cek Status Bayar</a>
+                    <a href="#" onclick="showSection('bayar-ipl')" class="block py-3 px-4 rounded hover:bg-blue-800 transition">Input Bayar IPL</a>
+                    <a href="#" onclick="showSection('kas')" class="block py-3 px-4 rounded hover:bg-blue-800 transition">Pengeluaran Kas</a>
+                    <a href="#" onclick="showSection('komplain')" class="block py-3 px-4 rounded hover:bg-blue-800 transition">Komplain</a>
+                </nav>
+            </div>
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0">
+            <header class="bg-white shadow p-4 flex justify-between items-center md:px-8">
+                <button onclick="toggleSidebar()" class="md:hidden p-2 text-blue-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+                <div id="sync-status" class="text-xs font-semibold px-3 py-1 bg-green-100 text-green-700 rounded-full">Cloud Synced</div>
+            </header>
+
+            <main class="p-4 md:p-8 overflow-y-auto">
+                
+                <section id="section-dash" class="content-section">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <p class="text-sm text-gray-500 font-medium">Total Warga</p>
+                            <h2 id="card-warga" class="text-3xl font-bold text-gray-800">0</h2>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <p class="text-sm text-gray-500 font-medium">Kas Masuk (IPL)</p>
+                            <h2 id="card-masuk" class="text-3xl font-bold text-green-600">Rp 0</h2>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <p class="text-sm text-gray-500 font-medium">Total Pengeluaran</p>
+                            <h2 id="card-keluar" class="text-3xl font-bold text-red-600">Rp 0</h2>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-4 rounded-xl shadow-sm"><canvas id="chartIpl"></canvas></div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm"><canvas id="chartStatus"></canvas></div>
+                    </div>
+                </section>
+
+                <section id="section-warga" class="content-section hidden">
+                    <div class="flex justify-between mb-4">
+                        <h2 class="text-xl font-bold">Database Warga</h2>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('importFile').click()" class="bg-gray-200 px-3 py-2 rounded text-sm">Impor Excel</button>
+                            <input type="file" id="importFile" class="hidden" accept=".xlsx, .xls" onchange="handleImport(event)">
+                            <button onclick="openWargaModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">+ Warga</button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 uppercase text-xs">
+                                <tr>
+                                    <th class="p-4">Nama</th><th class="p-4">Alamat</th><th class="p-4">Status</th><th class="p-4">Telp</th><th class="p-4">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="list-warga"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="section-bayar-ipl" class="content-section hidden">
+                    <h2 class="text-xl font-bold mb-4">Input Pembayaran IPL</h2>
+                    <form onsubmit="savePayment(event)" class="bg-white p-6 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-bold mb-1">PILIH WARGA</label>
+                            <select id="pay-nama" class="w-full border p-2 rounded" required></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1">JUMLAH (RP)</label>
+                            <input type="number" id="pay-jumlah" class="w-full border p-2 rounded" required>
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="w-full bg-green-600 text-white py-2 rounded font-bold">Simpan Transaksi</button>
+                        </div>
+                    </form>
+                    <div class="flex justify-end mb-2">
+                        <button onclick="exportToExcel('ipl')" class="bg-yellow-500 text-white px-3 py-1 rounded text-xs">Export ke Excel</button>
+                    </div>
+                    <div class="bg-white rounded shadow overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50"><tr><th class="p-3">Nama</th><th class="p-3">Tanggal</th><th class="p-3">Jumlah</th><th class="p-3">Hapus</th></tr></thead>
+                            <tbody id="list-pembayaran"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="section-status-ipl" class="content-section hidden">
+                    <h2 class="text-xl font-bold mb-4">Monitoring Pelunasan IPL</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-red-50 border border-red-200 p-4 rounded-xl">
+                            <h3 class="font-bold text-red-700 mb-3">BELUM BAYAR (MENUNGGAK)</h3>
+                            <ul id="status-belum" class="space-y-2 text-sm"></ul>
+                        </div>
+                        <div class="bg-green-50 border border-green-200 p-4 rounded-xl">
+                            <h3 class="font-bold text-green-700 mb-3">SUDAH LUNAS</h3>
+                            <ul id="status-lunas" class="space-y-2 text-sm"></ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-kas" class="content-section hidden">
+                    <h2 class="text-xl font-bold mb-4">Rekap Pengeluaran Kas</h2>
+                    <form onsubmit="saveExpense(event)" class="bg-white p-6 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <select id="kas-tipe" class="border p-2 rounded">
+                            <option>Perbaikan Lampu</option>
+                            <option>Perbaikan CCTV</option>
+                            <option>Beli Token</option>
+                            <option>Lain-lain</option>
+                        </select>
+                        <input type="number" id="kas-jumlah" placeholder="Nominal" class="border p-2 rounded" required>
+                        <button type="submit" class="bg-red-500 text-white rounded">Catat Pengeluaran</button>
+                    </form>
+                    <div class="flex justify-end mb-2">
+                        <button onclick="exportToExcel('kas')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs">Download Rekap Kas (.xlsx)</button>
+                    </div>
+                    <div id="list-kas" class="bg-white rounded shadow overflow-x-auto p-4"></div>
+                </section>
+
+                <section id="section-komplain" class="content-section hidden">
+                    <h2 class="text-xl font-bold mb-4">Laporan Komplain Warga</h2>
+                    <div id="display-komplain" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </section>
+
+            </main>
+        </div>
     </div>
-</div>
 
-<div class="flex flex-col md:flex-row min-h-screen">
-    <aside class="w-full md:w-72 bg-white border-r p-6">
-        <div class="mb-10">
-            <h1 class="text-2xl font-bold text-gray-800">RT 04 <span class="text-blue-600">ERP</span></h1>
-            <p class="text-xs text-gray-400 mt-1">Sistem Terintegrasi v2.0</p>
-        </div>
-        
-        <nav class="space-y-2">
-            <button onclick="show('dash')" class="btn-nav w-full text-left p-3 rounded-xl flex items-center gap-3 font-semibold nav-active">📊 Dashboard</button>
-            <button onclick="show('warga')" class="btn-nav w-full text-left p-3 rounded-xl flex items-center gap-3 font-semibold text-gray-600 hover:bg-gray-50">👥 Data Warga</button>
-            <button onclick="show('bayar')" class="btn-nav w-full text-left p-3 rounded-xl flex items-center gap-3 font-semibold text-gray-600 hover:bg-gray-50">💰 Input Bayar IPL</button>
-            <button onclick="show('cek')" class="btn-nav w-full text-left p-3 rounded-xl flex items-center gap-3 font-semibold text-blue-600 bg-blue-50 border border-blue-100">🔍 Cek Status IPL</button>
-            <button onclick="show('kas')" class="btn-nav w-full text-left p-3 rounded-xl flex items-center gap-3 font-semibold text-gray-600 hover:bg-gray-50">📉 Pengeluaran Kas</button>
-            <button onclick="show('komplain')" class="btn-nav w-full text-left p-3 rounded-xl flex items-center gap-3 font-semibold text-gray-600 hover:bg-gray-50">📣 Komplain</button>
-        </nav>
-    </aside>
-
-    <main class="flex-1 p-6 md:p-10">
-        
-        <div id="dash" class="section active">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-white">
-                <div class="bg-blue-600 p-6 rounded-3xl shadow-lg">
-                    <p class="opacity-80">Total Warga</p>
-                    <h2 id="stWarga" class="text-4xl font-bold mt-2">0</h2>
-                </div>
-                <div class="bg-emerald-600 p-6 rounded-3xl shadow-lg">
-                    <p class="opacity-80">Kas Masuk (IPL)</p>
-                    <h2 id="stMasuk" class="text-4xl font-bold mt-2">Rp 0</h2>
-                </div>
-                <div class="bg-rose-600 p-6 rounded-3xl shadow-lg">
-                    <p class="opacity-80">Kas Keluar</p>
-                    <h2 id="stKeluar" class="text-4xl font-bold mt-2">Rp 0</h2>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><canvas id="chPie"></canvas></div>
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><canvas id="chBar"></canvas></div>
-            </div>
-        </div>
-
-        <div id="warga" class="section">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">Master Data Warga</h2>
-                <div class="flex gap-2">
-                    <button onclick="importWarga()" class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold">Impor Excel</button>
-                    <button onclick="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md">+ Tambah Warga</button>
-                </div>
-            </div>
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr><th class="p-5">Nama</th><th class="p-5">Alamat</th><th class="p-5">Status</th><th class="p-5">Telp</th><th class="p-5">Aksi</th></tr>
-                    </thead>
-                    <tbody id="tbWarga" class="divide-y divide-gray-50"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="bayar" class="section">
-            <h2 class="text-2xl font-bold mb-6">Input Pembayaran IPL</h2>
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 mb-6">
-                <form id="formIPL" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-gray-400">PILIH WARGA</label>
-                        <select id="iplNama" class="p-3 bg-gray-50 rounded-xl border-none outline-blue-500"></select>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-gray-400">NOMINAL (RP)</label>
-                        <input type="number" id="iplBiaya" class="p-3 bg-gray-50 rounded-xl border-none outline-blue-500" placeholder="200000" required>
-                    </div>
-                    <div class="flex items-end">
-                        <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-xl font-bold shadow-lg shadow-blue-200">Catat Lunas ✅</button>
-                    </div>
-                </form>
-            </div>
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-xs font-bold text-gray-400 uppercase"><tr><th class="p-5">Nama</th><th class="p-5">Biaya</th><th class="p-5">Keterangan</th><th class="p-5">Aksi</th></tr></thead>
-                    <tbody id="tbIpl" class="divide-y text-sm font-medium"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="cek" class="section">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-2xl font-bold">Cek Status IPL Real-time</h2>
-                    <p class="text-gray-400 text-sm italic">Data otomatis tersinkron dengan Data Warga</p>
-                </div>
-                <input type="text" id="cariCek" onkeyup="renderCek()" placeholder="Cari Nama Warga..." class="p-3 border rounded-2xl w-64 outline-blue-500 shadow-sm">
-            </div>
-            <div id="gridCek" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-        </div>
-
-        <div id="kas" class="section">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-rose-600">Pengeluaran Kas</h2>
-                <button onclick="exportExcel('kas')" class="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl text-sm font-bold">Download Laporan Excel</button>
-            </div>
-            <form id="formKas" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <select id="kKat" class="p-3 bg-gray-50 rounded-xl border-none outline-blue-500">
-                    <option>Perbaikan Lampu</option>
-                    <option>Perbaikan CCTV</option>
-                    <option>Token Listrik</option>
-                    <option>Lainnya</option>
-                </select>
-                <input type="number" id="kNom" placeholder="Nominal" class="p-3 bg-gray-50 rounded-xl border-none outline-blue-500" required>
-                <input type="text" id="kKet" placeholder="Keterangan" class="p-3 bg-gray-50 rounded-xl border-none outline-blue-500">
-                <button type="submit" class="bg-rose-600 text-white font-bold rounded-xl shadow-lg">Catat Pengeluaran</button>
-            </form>
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-xs font-bold uppercase text-gray-400"><tr><th class="p-5">Kategori</th><th class="p-5">Nominal</th><th class="p-5">Ket</th><th class="p-5">Aksi</th></tr></thead>
-                    <tbody id="tbKas" class="divide-y text-sm"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="komplain" class="section">
-            <h2 class="text-2xl font-bold mb-6 italic">Aspirasi & Komplain Warga</h2>
-            <form id="formKomp" class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col gap-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="koN" placeholder="Nama Pelapor" class="p-4 bg-gray-50 rounded-2xl border-none" required>
-                    <input type="text" id="koA" placeholder="No Rumah" class="p-4 bg-gray-50 rounded-2xl border-none" required>
-                </div>
-                <textarea id="koI" placeholder="Deskripsi keluhan atau perbaikan..." class="p-4 bg-gray-50 rounded-2xl border-none h-32" required></textarea>
-                <button type="submit" class="bg-orange-500 text-white font-bold p-4 rounded-2xl shadow-lg shadow-orange-100">Kirim Laporan</button>
-            </form>
-            <div id="gridKomp" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-
-    </main>
-</div>
-
-<div id="modalW" class="fixed inset-0 bg-black/40 z-[110] hidden flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-[40px] w-full max-w-md shadow-2xl scale-up">
-        <h3 class="text-xl font-bold mb-6">Tambah Warga Baru</h3>
-        <div class="space-y-4">
-            <input type="text" id="wN" placeholder="Nama Lengkap" class="w-full p-4 bg-gray-100 rounded-2xl border-none">
-            <input type="text" id="wA" placeholder="Blok / No Rumah" class="w-full p-4 bg-gray-100 rounded-2xl border-none">
-            <select id="wS" class="w-full p-4 bg-gray-100 rounded-2xl border-none">
-                <option>Tetap</option><option>Kontrak</option>
+    <div id="wargaModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl">
+            <h3 class="text-lg font-bold mb-4">Tambah Data Warga</h3>
+            <input type="text" id="w-nama" placeholder="Nama Lengkap" class="w-full border mb-3 p-2 rounded">
+            <input type="text" id="w-alamat" placeholder="Alamat (No. Rumah)" class="w-full border mb-3 p-2 rounded">
+            <select id="w-status" class="w-full border mb-3 p-2 rounded">
+                <option>Tetap</option>
+                <option>Kontrak</option>
             </select>
-            <input type="text" id="wT" placeholder="No WhatsApp (08...)" class="w-full p-4 bg-gray-100 rounded-2xl border-none">
-        </div>
-        <div class="flex gap-3 mt-8">
-            <button onclick="closeModal()" class="flex-1 p-4 bg-gray-100 rounded-2xl font-bold">Batal</button>
-            <button onclick="saveWarga()" class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold">Simpan</button>
+            <input type="text" id="w-telp" placeholder="No Telepon" class="w-full border mb-4 p-2 rounded">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeWargaModal()" class="px-4 py-2 text-gray-500">Batal</button>
+                <button onclick="addWarga()" class="px-4 py-2 bg-blue-600 text-white rounded">Simpan Data</button>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    // --- DATABASE CONFIG (GANTI BIN_ID & API_KEY ANDA) ---
-    const API_KEY = '$2a$10$Z/ZTmFb7wX/LLZ3FS8cbJ.nuUe9L/IBCX2pfLqnstIhgfrqXA.Ioq'; 
-‎    const BIN_ID = '698b2e7a43b1c97be9742dc1';
-    const URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    <script>
+        // --- KONFIGURASI JSON.IO / JSONBIN ---
+        // Ganti dengan API Key Anda untuk simpan permanen cloud
+        const API_KEY = '$2a$10$Z/ZTmFb7wX/LLZ3FS8cbJ.nuUe9L/IBCX2pfLqnstIhgfrqXA.Ioq'; 
+        const BIN_ID = '698b359fd0ea881f40afa892';
 
-    let db = { warga: [], ipl: [], kas: [], komplain: [] };
+        let appData = {
+            warga: [],
+            pembayaran: [],
+            pengeluaran: [],
+            komplain: []
+        };
 
-    // SINKRONISASI CLOUD
-    async function sync(isLoad = false) {
-        const loader = document.getElementById('loader');
-        if(!isLoad) loader.classList.remove('hidden');
-        try {
-            const res = await fetch(isLoad ? `${URL}/latest` : URL, {
-                method: isLoad ? 'GET' : 'PUT',
-                headers: { 'X-Master-Key': API_KEY, 'Content-Type': 'application/json' },
-                body: isLoad ? null : JSON.stringify(db)
-            });
-            const data = await res.json();
-            if(isLoad) db = data.record;
+        // --- CORE LOGIC ---
+        async function loadData() {
+            const local = localStorage.getItem('rt04_erp');
+            if (local) appData = JSON.parse(local);
+            
+            // Contoh Fetch dari JSONbin (Opsional jika API Key diisi)
+            /*
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const remoteData = await res.json();
+                appData = remoteData.record;
+            } catch (e) { console.log("Offline mode active"); }
+            */
+            
             renderAll();
-        } catch (e) { console.error("Sync Error", e); }
-        finally { loader.classList.add('hidden'); }
-    }
+        }
 
-    function renderAll() {
-        // Render Warga
-        document.getElementById('tbWarga').innerHTML = db.warga.map((w, i) => `
-            <tr><td class="p-5 font-bold text-gray-700">${w.nama}</td><td class="p-5 text-gray-500">${w.alamat}</td>
-            <td class="p-5"><span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold">${w.status}</span></td>
-            <td class="p-5 text-gray-400">${w.telp}</td>
-            <td class="p-5"><button onclick="del('warga', ${i})" class="text-rose-500 hover:scale-110 transition">🗑️</button></td></tr>
-        `).join('');
+        async function syncToCloud() {
+            localStorage.setItem('rt04_erp', JSON.stringify(appData));
+            document.getElementById('sync-status').innerText = "Saving...";
+            
+            // Simpan ke JSONbin
+            /*
+            await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+                body: JSON.stringify(appData)
+            });
+            */
+            
+            renderAll();
+            document.getElementById('sync-status').innerText = "Cloud Synced";
+        }
 
-        // Render Dropdown Nama di Input IPL
-        document.getElementById('iplNama').innerHTML = db.warga.map(w => `<option value="${w.nama}">${w.nama}</option>`).join('');
+        // --- NAVIGATION ---
+        function showSection(id) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('section-' + id).classList.remove('hidden');
+            if(window.innerWidth < 768) toggleSidebar();
+        }
 
-        // Render History IPL
-        document.getElementById('tbIpl').innerHTML = db.ipl.map((p, i) => `
-            <tr><td class="p-5 font-bold">${p.nama}</td><td class="p-5 text-emerald-600">Rp ${parseInt(p.biaya).toLocaleString()}</td>
-            <td class="p-5 italic text-gray-400">Telah Lunas</td>
-            <td class="p-5"><button onclick="del('ipl', ${i})" class="text-rose-500">Hapus</button></td></tr>
-        `).join('');
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        }
 
-        // Render Kas & Komplain
-        document.getElementById('tbKas').innerHTML = db.kas.map((k, i) => `
-            <tr><td class="p-5 font-bold text-rose-600">${k.kategori}</td><td class="p-5 font-bold">Rp ${parseInt(k.nominal).toLocaleString()}</td>
-            <td class="p-5 text-gray-400">${k.ket}</td><td class="p-5 text-center"><button onclick="del('kas', ${i})">❌</button></td></tr>
-        `).join('');
+        // --- WARGA FUNCTIONS ---
+        function openWargaModal() { document.getElementById('wargaModal').classList.remove('hidden'); }
+        function closeWargaModal() { document.getElementById('wargaModal').classList.add('hidden'); }
 
-        document.getElementById('gridKomp').innerHTML = db.komplain.map((k, i) => `
-            <div class="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm relative">
-                <button onclick="del('komplain', ${i})" class="absolute top-4 right-4 text-orange-200">×</button>
-                <div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">👤</div>
-                <div><h4 class="font-bold text-gray-800">${k.nama}</h4><p class="text-[10px] text-gray-400 uppercase tracking-tighter">${k.alamat}</p></div></div>
-                <p class="text-sm text-gray-600 italic">"${k.keterangan}"</p>
-            </div>
-        `).join('');
-
-        renderCek();
-        updateStats();
-        updateCharts();
-    }
-
-    // LOGIKA CEK STATUS IPL (INTEGRASI WARGA + INPUT)
-    function renderCek() {
-        const keyword = document.getElementById('cariCek').value.toLowerCase();
-        const container = document.getElementById('gridCek');
-        
-        // Gabungkan Master Warga dengan status bayar
-        const dataCek = db.warga.map(w => {
-            const sudahBayar = db.ipl.find(p => p.nama === w.nama);
-            return {
-                nama: w.nama,
-                alamat: w.alamat,
-                isLunas: !!sudahBayar,
-                biaya: sudahBayar ? sudahBayar.biaya : '-'
+        function addWarga() {
+            const w = {
+                id: Date.now(),
+                nama: document.getElementById('w-nama').value,
+                alamat: document.getElementById('w-alamat').value,
+                status: document.getElementById('w-status').value,
+                telp: document.getElementById('w-telp').value
             };
-        });
+            appData.warga.push(w);
+            syncToCloud();
+            closeWargaModal();
+        }
 
-        const filtered = dataCek.filter(d => d.nama.toLowerCase().includes(keyword));
+        function handleImport(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
+                rows.forEach(r => {
+                    appData.warga.push({ id: Date.now() + Math.random(), nama: r.Nama, alamat: r.Alamat, status: r.Status || 'Tetap', telp: r.Telp || '-' });
+                });
+                syncToCloud();
+            };
+            reader.readAsArrayBuffer(file);
+        }
 
-        container.innerHTML = filtered.map(d => `
-            <div class="p-6 rounded-3xl transition-all hover:shadow-md border-2 ${d.isLunas ? 'bg-white border-emerald-100' : 'bg-white border-rose-100'}">
-                <div class="flex justify-between items-start mb-4">
-                    <div><h4 class="font-bold text-gray-800">${d.nama}</h4><p class="text-xs text-gray-400">${d.alamat}</p></div>
-                    <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase ${d.isLunas ? 'status-lunas' : 'status-belum'}">
-                        ${d.isLunas ? 'Lunas' : 'Belum Lunas'}
-                    </span>
-                </div>
-                <div class="text-xs font-semibold text-gray-500">
-                    Status Tagihan: <span class="${d.isLunas ? 'text-emerald-600' : 'text-rose-600'}">${d.isLunas ? 'Rp '+parseInt(d.biaya).toLocaleString() : 'Menunggu Pembayaran'}</span>
-                </div>
-            </div>
-        `).join('');
-    }
+        // --- PEMBAYARAN FUNCTIONS ---
+        function savePayment(e) {
+            e.preventDefault();
+            const pay = {
+                id: Date.now(),
+                nama: document.getElementById('pay-nama').value,
+                jumlah: parseInt(document.getElementById('pay-jumlah').value),
+                tgl: new Date().toLocaleDateString('id-ID')
+            };
+            appData.pembayaran.push(pay);
+            syncToCloud();
+            e.target.reset();
+        }
 
-    function show(id) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('nav-active', 'bg-blue-50', 'text-blue-600', 'border'));
-        document.getElementById(id).classList.add('active');
-        event.currentTarget.classList.add('nav-active');
-    }
+        function deletePayment(id) {
+            appData.pembayaran = appData.pembayaran.filter(p => p.id !== id);
+            syncToCloud();
+        }
 
-    function openModal() { document.getElementById('modalW').classList.remove('hidden'); }
-    function closeModal() { document.getElementById('modalW').classList.add('hidden'); }
+        // --- KAS FUNCTIONS ---
+        function saveExpense(e) {
+            e.preventDefault();
+            const exp = {
+                id: Date.now(),
+                tipe: document.getElementById('kas-tipe').value,
+                jumlah: parseInt(document.getElementById('kas-jumlah').value),
+                tgl: new Date().toLocaleDateString('id-ID')
+            };
+            appData.pengeluaran.push(exp);
+            syncToCloud();
+            e.target.reset();
+        }
 
-    // ACTIONS
-    function saveWarga() {
-        db.warga.push({ nama: document.getElementById('wN').value, alamat: document.getElementById('wA').value, status: document.getElementById('wS').value, telp: document.getElementById('wT').value });
-        closeModal(); sync();
-    }
+        // --- RENDERER ---
+        function renderAll() {
+            // Table Warga
+            document.getElementById('list-warga').innerHTML = appData.warga.map(w => `
+                <tr class="border-b">
+                    <td class="p-4 font-semibold">${w.nama}</td>
+                    <td class="p-4">${w.alamat}</td>
+                    <td class="p-4">${w.status}</td>
+                    <td class="p-4 text-gray-500">${w.telp}</td>
+                    <td class="p-4"><button onclick="deleteWarga(${w.id})" class="text-red-500">Hapus</button></td>
+                </tr>
+            `).join('');
 
-    document.getElementById('formIPL').onsubmit = (e) => {
-        e.preventDefault();
-        db.ipl.push({ nama: document.getElementById('iplNama').value, biaya: document.getElementById('iplBiaya').value });
-        e.target.reset(); sync();
-    };
+            // Dropdown Bayar
+            document.getElementById('pay-nama').innerHTML = appData.warga.map(w => `<option value="${w.nama}">${w.nama}</option>`).join('');
 
-    document.getElementById('formKas').onsubmit = (e) => {
-        e.preventDefault();
-        db.kas.push({ kategori: document.getElementById('kKat').value, nominal: document.getElementById('kNom').value, ket: document.getElementById('kKet').value });
-        e.target.reset(); sync();
-    };
+            // Table Bayar
+            document.getElementById('list-pembayaran').innerHTML = appData.pembayaran.map(p => `
+                <tr class="border-b">
+                    <td class="p-3">${p.nama}</td>
+                    <td class="p-3">${p.tgl}</td>
+                    <td class="p-3 font-bold">Rp ${p.jumlah.toLocaleString()}</td>
+                    <td class="p-3"><button onclick="deletePayment(${p.id})" class="text-red-400">×</button></td>
+                </tr>
+            `).join('');
 
-    document.getElementById('formKomp').onsubmit = (e) => {
-        e.preventDefault();
-        db.komplain.push({ nama: document.getElementById('koN').value, alamat: document.getElementById('koA').value, keterangan: document.getElementById('koI').value });
-        e.target.reset(); sync();
-    };
+            // Monitoring Status
+            const sudahBayarNames = appData.pembayaran.map(p => p.nama);
+            document.getElementById('status-belum').innerHTML = appData.warga.filter(w => !sudahBayarNames.includes(w.nama)).map(w => `
+                <li class="flex justify-between p-2 bg-white rounded shadow-sm"><span>${w.nama}</span> <span class="text-xs text-red-500 font-bold italic">BELUM LUNAS</span></li>
+            `).join('');
+            document.getElementById('status-lunas').innerHTML = appData.pembayaran.map(p => `
+                <li class="flex justify-between p-2 bg-white rounded shadow-sm"><span>${p.nama}</span> <span class="text-xs text-green-600 font-bold">LUNAS ✓</span></li>
+            `).join('');
 
-    function del(key, i) { if(confirm('Hapus data?')) { db[key].splice(i, 1); sync(); } }
+            // Kas Table
+            document.getElementById('list-kas').innerHTML = `
+                <table class="w-full text-left">
+                    <thead><tr><th>Tipe</th><th>Jumlah</th><th>Tgl</th></tr></thead>
+                    <tbody>${appData.pengeluaran.map(k => `<tr><td>${k.tipe}</td><td class="text-red-500">-Rp ${k.jumlah.toLocaleString()}</td><td>${k.tgl}</td></tr>`).join('')}</tbody>
+                </table>
+            `;
 
-    function updateStats() {
-        const tIpl = db.ipl.reduce((a, b) => a + parseInt(b.biaya), 0);
-        const tKas = db.kas.reduce((a, b) => a + parseInt(b.nominal), 0);
-        document.getElementById('stWarga').innerText = db.warga.length;
-        document.getElementById('stMasuk').innerText = 'Rp ' + tIpl.toLocaleString();
-        document.getElementById('stKeluar').innerText = 'Rp ' + tKas.toLocaleString();
-    }
+            // Dashboard Stats
+            const totalMasuk = appData.pembayaran.reduce((a, b) => a + b.jumlah, 0);
+            const totalKeluar = appData.pengeluaran.reduce((a, b) => a + b.jumlah, 0);
+            document.getElementById('card-warga').innerText = appData.warga.length;
+            document.getElementById('card-masuk').innerText = `Rp ${totalMasuk.toLocaleString()}`;
+            document.getElementById('card-keluar').innerText = `Rp ${totalKeluar.toLocaleString()}`;
 
-    let pC, bC;
-    function updateCharts() {
-        if(pC) pC.destroy(); if(bC) bC.destroy();
-        pC = new Chart(document.getElementById('chPie'), {
-            type: 'doughnut',
-            data: { labels: ['Lunas', 'Belum'], datasets: [{ data: [db.ipl.length, db.warga.length - db.ipl.length], backgroundColor: ['#10b981', '#f43f5e'] }] },
-            options: { plugins: { title: { display: true, text: 'Rasio Pelunasan IPL' } } }
-        });
-        const g = {}; db.kas.forEach(k => g[k.kategori] = (g[k.kategori] || 0) + parseInt(k.nominal));
-        bC = new Chart(document.getElementById('chBar'), {
-            type: 'bar',
-            data: { labels: Object.keys(g), datasets: [{ label: 'Pengeluaran (Rp)', data: Object.values(g), backgroundColor: '#6366f1' }] }
-        });
-    }
+            updateCharts(totalMasuk, totalKeluar);
+        }
 
-    // Jalankan Sinkronisasi Pertama
-    sync(true);
-</script>
-</body>
-</html>
+        // --- CHARTS ---
+        let chart1, chart2;
+        function updateCharts(masuk, keluar) {
+            if(chart1) chart1.destroy();
+            if(chart2) chart2.destroy();
+
+            chart1 = new Chart(document.getElementById('chartIpl'), {
+                type: 'pie',
+                data: {
+                    labels: ['Sisa Kas', 'Pengeluaran'],
+                    datasets: [{ data: [masuk - keluar, keluar], backgroundColor: ['#10b981', '#ef4444'] }]
+                }
+            });
+
+            chart2 = new Chart(document.getElementById('chartStatus'), {
+                type: 'bar',
+                data: {
+                    labels: ['Sudah Bayar', 'Belum Bayar'],
+                    datasets: [{
+                        label: 'Orang',
+                        data: [appData.pembayaran.length, appData.warga.length - appData.pembayaran.length],
+                        backgroundColor: '#3b82f6'
+                    }]
+                }
+            });
+        }
+
+        function deleteWarga(id) {
+            appData.warga = appData.warga.filter(w => w.id !== id);
+            syncToCloud();
+        }
+
+        // --- EXPORT ---
+        function exportToExcel(type) {
+            let dataToExport = type === 'ipl' ? appData.pembayaran : appData.pengeluaran;
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook
